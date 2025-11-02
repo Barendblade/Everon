@@ -1,22 +1,34 @@
-import faunadb from 'faunadb';
-const q = faunadb.query;
+// functions/getLikes.js
+import { createClient } from '@supabase/supabase-js';
 
-const client = new faunadb.Client({ secret: process.env.FAUNA_SECRET });
+// Initialize Supabase client
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY // server-side key
+);
 
 export async function handler(event) {
   try {
     const { postId } = JSON.parse(event.body);
-    if (!postId) return { statusCode: 400, body: 'Missing postId' };
+    if (!postId) {
+      return { statusCode: 400, body: JSON.stringify({ error: 'Missing postId' }) };
+    }
 
-    const likes = await client.query(
-      q.Map(
-        q.Paginate(q.Match(q.Index('likes_by_post'), postId)),
-        q.Lambda("X", q.Get(q.Var("X")))
-      )
-    );
+    // Count likes for the post
+    const { count, error } = await supabase
+      .from('likes') // your "likes" table
+      .select('*', { count: 'exact' })
+      .eq('post_id', postId);
 
-    return { statusCode: 200, body: JSON.stringify(likes.data.length) };
+    if (error) {
+      return { statusCode: 500, body: JSON.stringify(error) };
+    }
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ likes: count })
+    };
   } catch (err) {
-    return { statusCode: 500, body: err.toString() };
+    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
   }
 }
