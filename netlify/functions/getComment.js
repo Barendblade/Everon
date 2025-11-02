@@ -1,23 +1,36 @@
+// functions/getComments.js
+import { createClient } from '@supabase/supabase-js';
 
-import faunadb from 'faunadb';
-const q = faunadb.query;
-
-const client = new faunadb.Client({ secret: process.env.FAUNA_SECRET });
+// Initialize Supabase client
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY // Use service role key for server-side
+);
 
 export async function handler(event) {
   try {
     const { postId } = JSON.parse(event.body);
-    if (!postId) return { statusCode: 400, body: 'Missing postId' };
+    if (!postId) {
+      return { statusCode: 400, body: JSON.stringify({ error: 'Missing postId' }) };
+    }
 
-    const comments = await client.query(
-      q.Map(
-        q.Paginate(q.Match(q.Index('comments_by_post'), postId), { size: 100 }),
-        q.Lambda("X", q.Get(q.Var("X")))
-      )
-    );
+    // Fetch comments for the post
+    const { data: comments, error } = await supabase
+      .from('comments') // Make sure you have a "comments" table
+      .select('*')
+      .eq('post_id', postId)
+      .order('created_at', { ascending: true }); // oldest first
 
-    return { statusCode: 200, body: JSON.stringify(comments.data.map(c => c.data)) };
+    if (error) {
+      return { statusCode: 500, body: JSON.stringify(error) };
+    }
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify(comments)
+    };
+
   } catch (err) {
-    return { statusCode: 500, body: err.toString() };
+    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
   }
 }
