@@ -363,7 +363,10 @@
     <!-- Load posts.js -->
     <script src="posts.js"></script>
 
-   <script>
+  <script type="module">
+/* Import POSTS as ES module */
+import { POSTS } from './posts.js';
+
 /* Utilities for session storage */
 const storage = {
     getName() { return sessionStorage.getItem('name') || null },
@@ -381,7 +384,7 @@ const meArea = document.getElementById('meArea');
 function openModal() { overlay.style.display = 'flex'; overlay.setAttribute('aria-hidden', 'false'); nameInput.focus(); }
 function close() { overlay.style.display = 'none'; overlay.setAttribute('aria-hidden', 'true'); }
 
-loginBtn.addEventListener('click', () => openModal());
+loginBtn.addEventListener('click', openModal);
 closeModal.addEventListener('click', e => { e.preventDefault(); close(); });
 
 loginForm.addEventListener('submit', e => {
@@ -407,27 +410,32 @@ function updateMeCard() {
 /* Theme toggle */
 const themeToggle = document.getElementById('themeToggle');
 if(localStorage.getItem('theme')==='dark') document.body.classList.add('dark');
-themeToggle.addEventListener('click',()=>{
+themeToggle.addEventListener('click', ()=>{
     document.body.classList.toggle('dark');
     const isDark = document.body.classList.contains('dark');
-    localStorage.setItem('theme',isDark?'dark':'light');
-    themeToggle.textContent = isDark?'☀️':'🌙';
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    themeToggle.textContent = isDark ? '☀️' : '🌙';
 });
-themeToggle.textContent = document.body.classList.contains('dark')?'☀️':'🌙';
+themeToggle.textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
 
 updateMeCard();
 
 /* Escape HTML utility */
-function escapeHtml(s){return(s+'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');}
+function escapeHtml(s) {
+    return (s+'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
+}
 
 /* Render posts */
 const postsWrap = document.getElementById('posts');
 
 async function fetchLikes(postId) {
-    const res = await fetch('/.netlify/functions/getLikes',{
-        method:'POST', body:JSON.stringify({postId})
-    });
-    return await res.json();
+    try {
+        const res = await fetch('/.netlify/functions/getLikes', {
+            method:'POST',
+            body: JSON.stringify({ postId })
+        });
+        return await res.json();
+    } catch { return 0; }
 }
 
 async function toggleLike(postId, btn) {
@@ -435,22 +443,24 @@ async function toggleLike(postId, btn) {
     if(!user){openModal(); return;}
     const liked = btn.classList.contains('liked');
     const fn = liked ? '/.netlify/functions/removeLike' : '/.netlify/functions/addLike';
-    await fetch(fn,{method:'POST', body:JSON.stringify({postId,userId:user})});
+    await fetch(fn, { method:'POST', body: JSON.stringify({ postId, userId: user }) });
     btn.classList.toggle('liked');
-    btn.querySelector('.heart').textContent = liked?'♡':'♥';
-    const count = parseInt(btn.querySelector('.count').textContent)||0;
-    btn.querySelector('.count').textContent = liked?count-1:count+1;
+    btn.querySelector('.heart').textContent = liked ? '♡' : '♥';
+    const count = parseInt(btn.querySelector('.count').textContent) || 0;
+    btn.querySelector('.count').textContent = liked ? count-1 : count+1;
 }
 
 async function fetchComments(postId){
-    const res = await fetch('/.netlify/functions/getComments',{method:'POST',body:JSON.stringify({postId})});
-    return await res.json();
+    try {
+        const res = await fetch('/.netlify/functions/getComments', { method:'POST', body: JSON.stringify({ postId }) });
+        return await res.json();
+    } catch { return []; }
 }
 
 async function addComment(postId,text){
     const user = storage.getName();
     if(!user){openModal(); return;}
-    await fetch('/.netlify/functions/addComment',{method:'POST',body:JSON.stringify({postId,userId:user,text})});
+    await fetch('/.netlify/functions/addComment',{ method:'POST', body: JSON.stringify({ postId, userId:user, text }) });
     renderPosts();
 }
 
@@ -459,15 +469,14 @@ async function renderPosts(filter='') {
     const term = filter.trim().toLowerCase();
     const data = POSTS.filter(p => !term || (p.title + p.excerpt + p.content.map(c=>c.text||'').join('')).toLowerCase().includes(term));
 
-    if (!data.length) {
+    if(!data.length){
         postsWrap.innerHTML = '<div style="color:var(--muted);padding:18px;background:var(--card);border-radius:12px">No posts match your search.</div>';
         return;
     }
 
-    for (const p of data) {
+    for(const p of data){
         const div = document.createElement('article');
         div.className = 'card';
-
         const likesCount = await fetchLikes(p.id);
 
         div.innerHTML = `
@@ -498,12 +507,11 @@ async function renderPosts(filter='') {
             const com = document.createElement('div');
             com.style.fontSize='13px';
             com.style.marginTop='4px';
-            com.innerHTML=`<strong>${escapeHtml(c.userId)}</strong>: ${escapeHtml(c.text)}`;
+            com.innerHTML = `<strong>${escapeHtml(c.userId)}</strong>: ${escapeHtml(c.text)}`;
             commentsEl.appendChild(com);
         });
     }
 }
-
 
 /* Handle search */
 document.getElementById('searchInput').addEventListener('input', e=>renderPosts(e.target.value));
@@ -523,10 +531,13 @@ postsWrap.addEventListener('click', e=>{
     }
 });
 
+/* Initial render */
+renderPosts();
 </script>
 
 </body>
 
 
 </html>
+
 
