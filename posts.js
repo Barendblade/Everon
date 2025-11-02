@@ -1,4 +1,4 @@
-const POSTS = [
+export const POSTS = [
     {
         id: 'p1',
         title: 'Getting started with HTML',
@@ -65,3 +65,4 @@ const POSTS = [
         ]
     }
 ];
+
