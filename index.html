@@ -454,39 +454,40 @@ async function addComment(postId,text){
     renderPosts();
 }
 
-function renderPosts(filter=''){
-    postsWrap.innerHTML='';
+async function renderPosts(filter='') {
+    postsWrap.innerHTML = '';
     const term = filter.trim().toLowerCase();
-    const data = POSTS.filter(p => !term || (p.title+p.excerpt+p.body).toLowerCase().includes(term));
+    const data = POSTS.filter(p => !term || (p.title + p.excerpt + p.content.map(c=>c.text||'').join('')).toLowerCase().includes(term));
 
-    if(data.length===0){
-        postsWrap.innerHTML='<div style="color:var(--muted);padding:18px;background:var(--card);border-radius:12px">No posts match your search.</div>';
+    if (!data.length) {
+        postsWrap.innerHTML = '<div style="color:var(--muted);padding:18px;background:var(--card);border-radius:12px">No posts match your search.</div>';
         return;
     }
 
-    data.forEach(async p=>{
+    for (const p of data) {
         const div = document.createElement('article');
-        div.className='card';
+        div.className = 'card';
+
         const likesCount = await fetchLikes(p.id);
 
-        div.innerHTML=`
-        <div class="thumb" aria-hidden="true" style="${p.thumb?`background:url('${p.thumb}') center/cover no-repeat`:'background: linear-gradient(135deg,#fde68a,#fca5a5)'}"></div>
-        <div class="meta">
-            <h3 class="title">${escapeHtml(p.title)}</h3>
-            <p class="excerpt">${escapeHtml(p.excerpt)}</p>
-            <div class="post-actions">
-                <button class="like-btn ${likesCount>0?'liked':''}" data-id="${p.id}" aria-pressed="${likesCount>0}">
-                    <span class="heart">${likesCount>0?'♥':'♡'}</span>
-                    <span class="count">${likesCount}</span>
-                </button>
-                <a class="btn secondary" href="post.html?id=${p.id}">Read full</a>
+        div.innerHTML = `
+            <div class="thumb" aria-hidden="true" style="${p.thumb ? `background:url('${p.thumb}') center/cover no-repeat` : 'background: linear-gradient(135deg,#fde68a,#fca5a5)'}"></div>
+            <div class="meta">
+                <h3 class="title">${escapeHtml(p.title)}</h3>
+                <p class="excerpt">${escapeHtml(p.excerpt)}</p>
+                <div class="post-actions">
+                    <button class="like-btn ${likesCount>0?'liked':''}" data-id="${p.id}" aria-pressed="${likesCount>0}">
+                        <span class="heart">${likesCount>0?'♥':'♡'}</span>
+                        <span class="count">${likesCount}</span>
+                    </button>
+                    <a class="btn secondary" href="post.html?id=${p.id}">Read full</a>
+                </div>
+                <div class="comments" id="comments-${p.id}" style="margin-top:10px"></div>
+                <div style="display:flex;gap:6px;margin-top:6px;">
+                    <input type="text" placeholder="Add a comment..." data-id="${p.id}" style="flex:1;padding:6px;border-radius:8px;border:1px solid #e6e9ef;">
+                    <button class="btn" data-id="${p.id}">Post</button>
+                </div>
             </div>
-            <div class="comments" id="comments-${p.id}" style="margin-top:10px"></div>
-            <div style="display:flex;gap:6px;margin-top:6px;">
-                <input type="text" placeholder="Add a comment..." data-id="${p.id}" style="flex:1;padding:6px;border-radius:8px;border:1px solid #e6e9ef;">
-                <button class="btn" data-id="${p.id}">Post</button>
-            </div>
-        </div>
         `;
         postsWrap.appendChild(div);
 
@@ -500,8 +501,9 @@ function renderPosts(filter=''){
             com.innerHTML=`<strong>${escapeHtml(c.userId)}</strong>: ${escapeHtml(c.text)}`;
             commentsEl.appendChild(com);
         });
-    });
+    }
 }
+
 
 /* Handle search */
 document.getElementById('searchInput').addEventListener('input', e=>renderPosts(e.target.value));
@@ -527,3 +529,4 @@ postsWrap.addEventListener('click', e=>{
 
 
 </html>
+
