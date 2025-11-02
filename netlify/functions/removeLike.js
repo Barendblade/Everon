@@ -1,23 +1,35 @@
+// functions/removeLike.js
+import { createClient } from '@supabase/supabase-js';
 
-import faunadb from 'faunadb';
-const q = faunadb.query;
-
-const client = new faunadb.Client({ secret: process.env.FAUNA_SECRET });
+// Initialize Supabase client
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+);
 
 export async function handler(event) {
   try {
     const { postId, userId } = JSON.parse(event.body);
-    if (!postId || !userId) return { statusCode: 400, body: 'Missing postId or userId' };
+    if (!postId || !userId) {
+      return { statusCode: 400, body: JSON.stringify({ error: 'Missing postId or userId' }) };
+    }
 
-    // Find the like
-    const like = await client.query(
-      q.Get(q.Match(q.Index('likes_by_post_user'), [postId, userId]))
-    );
+    // Delete the like for the user on this post
+    const { data, error } = await supabase
+      .from('likes')
+      .delete()
+      .eq('post_id', postId)
+      .eq('user_id', userId);
 
-    await client.query(q.Delete(like.ref));
+    if (error) {
+      return { statusCode: 500, body: JSON.stringify(error) };
+    }
 
-    return { statusCode: 200, body: JSON.stringify({ removed: true }) };
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ removed: true })
+    };
   } catch (err) {
-    return { statusCode: 500, body: err.toString() };
+    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
   }
 }
